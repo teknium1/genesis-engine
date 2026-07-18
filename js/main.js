@@ -179,7 +179,7 @@ function bindCanvasGestures() {
   };
 
   canvas.addEventListener('pointerdown', (ev) => {
-    canvas.setPointerCapture(ev.pointerId);
+    try { canvas.setPointerCapture(ev.pointerId); } catch (_) { /* synthetic/absent pointer */ }
     if (ev.shiftKey || ev.altKey) {
       mode = 'poke';
       params.pokeErase = ev.altKey;
