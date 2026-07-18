@@ -78,9 +78,23 @@ A hardware GPU is strongly recommended — the whole sim runs on it. Requires a 
 
 ## Controls
 
-- **Space** pause · **R** re-seed · **click/drag** inject matter and stir the medium
-- Toggle each of the four physics ingredients independently to see what each one contributes to (or subtracts from) open-endedness
+- **Space** pause · **R** re-seed
+- **Drag** to pan · **scroll** to zoom (toward the cursor) · **Reset view** to recenter
+- **Shift+click** to inject matter · **Alt+click** to erase
+- Toggle each ingredient independently to see what it contributes to (or subtracts from) the dynamics
 - **Copy world link** encodes every knob in the URL so a world is shareable
+
+### A note on honesty
+
+Getting *spontaneous, sustained, open-ended* life out of random initial
+conditions is the actual unsolved problem this whole field is about — every
+known system either dies out or freezes into something static. Genesis Engine
+does not claim to have solved it. What it does: build on **Lenia**, a substrate
+that reliably produces living, *moving* creatures (start with the glider
+presets — the Orbium glider genuinely swims and collides), then let you layer
+on the four research ingredients and watch what each one does to the dynamics.
+The **Primordial soup** preset is the honest case: watch it self-organize and,
+usually, freeze. That freeze *is* the phenomenon the video is about.
 
 ---
 
