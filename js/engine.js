@@ -1,4 +1,6 @@
-// engine.js — WebGL2 setup, ping-pong float textures, Lenia passes, camera, readback.
+// engine.js — WebGL2 setup, MRT ping-pong float textures, Lenia passes, camera, readback.
+// v3: TWO state textures per generation (tex0 primary, tex1 aux) written together
+// via gl.drawBuffers (multiple render targets).
 import { VERT, POTENTIAL_FS, STEP_FS, RENDER_FS } from './shaders/glsl.js';
 
 export class Engine {
@@ -16,9 +18,13 @@ export class Engine {
     this.progStep   = this._program(VERT, STEP_FS);
     this.progRender = this._program(VERT, RENDER_FS);
 
-    this.stateA = this._tex(); this.stateB = this._tex(); this.potT = this._tex();
-    this.fbo = gl.createFramebuffer();
-    this.src = this.stateA; this.dst = this.stateB;
+    // ping-pong PAIRS: {s0, s1}
+    this.a = { s0: this._tex(), s1: this._tex() };
+    this.b = { s0: this._tex(), s1: this._tex() };
+    this.potT = this._tex();
+    this.fboStep = gl.createFramebuffer();   // MRT: two color attachments
+    this.fboRead = gl.createFramebuffer();   // single attachment for readback
+    this.src = this.a; this.dst = this.b;
   }
   ok() { return !!this.gl; }
 
@@ -69,38 +75,46 @@ export class Engine {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
     return t;
   }
-  seed(data) {
+  _upload(tex, data) {
     const gl = this.gl;
-    gl.bindTexture(gl.TEXTURE_2D, this.src);
+    gl.bindTexture(gl.TEXTURE_2D, tex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, this.W, this.H, 0, gl.RGBA, gl.FLOAT, data);
   }
-  _drawTo(tex) {
-    const gl = this.gl;
-    gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
-    gl.viewport(0, 0, this.W, this.H);
-    gl.bindVertexArray(this.vao);
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  // seed accepts {s0, s1} float arrays
+  seed(world) {
+    this._upload(this.src.s0, world.s0);
+    this._upload(this.src.s1, world.s1);
   }
 
   step(p) {
     const gl = this.gl;
     const texel = [1 / this.W, 1 / this.H];
 
-    // PASS 1: potential
+    // PASS 1: potential (reads src.s0 -> potT)
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.fboStep);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.potT, 0);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, null, 0);
+    gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
+    gl.viewport(0, 0, this.W, this.H);
     gl.useProgram(this.progPot);
-    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.src);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.src.s0);
     gl.uniform1i(this._u(this.progPot, 'uState'), 0);
     gl.uniform2f(this._u(this.progPot, 'uTexel'), texel[0], texel[1]);
     gl.uniform1f(this._u(this.progPot, 'uRadius'), p.radius);
-    this._drawTo(this.potT);
+    gl.bindVertexArray(this.vao);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
 
-    // PASS 2: step
+    // PASS 2: MRT step (reads src.s0, src.s1, potT -> dst.s0, dst.s1)
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.dst.s0, 0);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, this.dst.s1, 0);
+    gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
     gl.useProgram(this.progStep);
-    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.src);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.src.s0);
     gl.uniform1i(this._u(this.progStep, 'uState'), 0);
-    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.potT);
-    gl.uniform1i(this._u(this.progStep, 'uPot'), 1);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.src.s1);
+    gl.uniform1i(this._u(this.progStep, 'uAux'), 1);
+    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, this.potT);
+    gl.uniform1i(this._u(this.progStep, 'uPot'), 2);
     const U = this._u.bind(this), P = this.progStep;
     gl.uniform2f(U(P,'uTexel'), texel[0], texel[1]);
     gl.uniform1f(U(P,'uDt'), p.dt);
@@ -110,6 +124,8 @@ export class Engine {
     gl.uniform1f(U(P,'uLight'), p.light);
     gl.uniform1f(U(P,'uGenome'), p.genome ? 1 : 0);
     gl.uniform1f(U(P,'uMetabolism'), p.metabolism ? 1 : 0);
+    gl.uniform1f(U(P,'uEat'), p.eat ? 1 : 0);
+    gl.uniform1f(U(P,'uPredPayoff'), p.predPayoff);
     gl.uniform1f(U(P,'uMassConserve'), p.massConserve ? 1 : 0);
     gl.uniform1f(U(P,'uMassScale'), p.massScale);
     gl.uniform1f(U(P,'uCuriosity'), p.curiosity);
@@ -118,31 +134,42 @@ export class Engine {
     gl.uniform1f(U(P,'uPokeR'), p.pokeR);
     gl.uniform1f(U(P,'uPokeAmt'), p.pokeAmt);
     gl.uniform1f(U(P,'uPokeErase'), p.pokeErase ? 1 : 0);
-    this._drawTo(this.dst);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+    // reset draw buffers so subsequent single-target draws behave
+    gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
 
     const tmp = this.src; this.src = this.dst; this.dst = tmp;
   }
 
-  render(view, cam) {
+  render(view, cam, opt) {
     const gl = this.gl;
+    opt = opt || {};
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, this.canvas.width, this.canvas.height);
     gl.useProgram(this.progRender);
-    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.src);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.src.s0);
     gl.uniform1i(this._u(this.progRender, 'uState'), 0);
-    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.potT);
-    gl.uniform1i(this._u(this.progRender, 'uPot'), 1);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.src.s1);
+    gl.uniform1i(this._u(this.progRender, 'uAux'), 1);
+    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, this.potT);
+    gl.uniform1i(this._u(this.progRender, 'uPot'), 2);
     gl.uniform1i(this._u(this.progRender, 'uView'), view);
     gl.uniform4f(this._u(this.progRender, 'uCam'), cam.x, cam.y, cam.zoom, 1.0);
     gl.uniform1f(this._u(this.progRender, 'uGenome'), 1.0);
+    gl.uniform1f(this._u(this.progRender, 'uShowLight'), opt.showLight ? 1 : 0);
+    gl.uniform1f(this._u(this.progRender, 'uLightGrad'), opt.lightGrad ? 1 : 0);
     gl.bindVertexArray(this.vao);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 
-  readback(buf) {
+  // Read one of the current source textures ('s0' or 's1') into buf.
+  readback(buf, which) {
     const gl = this.gl;
-    gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.src, 0);
+    const tex = (which === 's1') ? this.src.s1 : this.src.s0;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.fboRead);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+    gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
     gl.readPixels(0, 0, this.W, this.H, gl.RGBA, gl.FLOAT, buf);
     return buf;
   }

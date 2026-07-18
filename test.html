@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"/><title>Genesis Engine — acceptance tests</title></head>
+<body>
+<canvas id="sim" width="128" height="128"></canvas>
+<pre id="out">running…</pre>
+<script type="module">
+import { Engine } from './js/engine.js';
+import { makeWorld } from './js/worlds.js';
+
+const W = 128, H = 128;
+const out = document.getElementById('out');
+const log = (s) => { out.textContent += s + '\n'; console.log(s); };
+
+function baseParams(over) {
+  return Object.assign({
+    dt: 0.10, radius: 13, mu: 0.15, sigma: 0.017, mut: 0.0,
+    light: 0.35, genome: false, metabolism: false, eat: false,
+    predPayoff: 0.35, massConserve: false, massScale: 1.0,
+    curiosity: 0, time: 0, poke: [-1,-1], pokeR: 0.045, pokeAmt: 0.9, pokeErase: false,
+  }, over || {});
+}
+
+// center of mass with toroidal wrapping (circular mean), returns {x,y,mass}
+function centerOfMass(s0) {
+  let sx = 0, sy = 0, cx = 0, cy = 0, m = 0;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const v = s0[(y*W+x)*4];
+      if (v <= 0.02) continue;
+      const ax = (x / W) * 2*Math.PI, ay = (y / H) * 2*Math.PI;
+      sx += v*Math.cos(ax); cx += v*Math.sin(ax);
+      sy += v*Math.cos(ay); cy += v*Math.sin(ay);
+      m += v;
+    }
+  }
+  if (m <= 0) return { x: 0, y: 0, mass: 0 };
+  const angX = Math.atan2(cx/m, sx/m), angY = Math.atan2(cy/m, sy/m);
+  return { x: ((angX/(2*Math.PI))*W + W) % W, y: ((angY/(2*Math.PI))*H + H) % H, mass: m };
+}
+
+// toroidal distance between two COM points
+function torusDist(a, b) {
+  let dx = Math.abs(a.x - b.x); dx = Math.min(dx, W - dx);
+  let dy = Math.abs(a.y - b.y); dy = Math.min(dy, H - dy);
+  return Math.hypot(dx, dy);
+}
+
+// connected components (4-neighbour, toroidal) of cells above threshold, downsampled
+function components(s0, thr) {
+  const ds = 2, w = W/ds, h = H/ds;
+  const g = new Uint8Array(w*h);
+  for (let y=0;y<h;y++) for (let x=0;x<w;x++) g[y*w+x] = s0[((y*ds)*W+(x*ds))*4] > thr ? 1 : 0;
+  const seen = new Uint8Array(w*h); let comps = 0, big = 0;
+  const st = [];
+  for (let y=0;y<h;y++) for (let x=0;x<w;x++) {
+    const p = y*w+x; if (!g[p]||seen[p]) continue;
+    let size = 0; st.length=0; st.push(p); seen[p]=1;
+    while (st.length) { const c=st.pop(); size++; const cx=c%w, cy=(c/w)|0;
+      const nb = [ ((cx+1)%w)+cy*w, ((cx-1+w)%w)+cy*w, cx+((cy+1)%h)*w, cx+((cy-1+h)%h)*w ];
+      for (const q of nb) if (g[q]&&!seen[q]) { seen[q]=1; st.push(q); } }
+    comps++; if (size >= 6) big++;
+  }
+  return { comps, big };
+}
+
+function totalEnergy(s0, s1) {
+  let c=0, f=0;
+  for (let i=0;i<W*H;i++){ c += s0[i*4+1]; f += s1[i*4+1]; }
+  return { creature: c, free: f, total: c+f };
+}
+
+async function run() {
+  const eng = new Engine(document.getElementById('sim'), W, H);
+  if (!eng.ok()) { log('FAIL: no WebGL2'); window.__RESULTS__={error:'no webgl2'}; return; }
+  const results = {};
+  const s0 = new Float32Array(W*H*4), s1 = new Float32Array(W*H*4);
+
+  // ---- T1: coherent motion at DEFAULT-ish settings (single glider) ----------
+  // defaults the user gets: genome on, metabolism on, eat on, massConserve off
+  {
+    const p = baseParams({ genome:true, metabolism:true, eat:true, predPayoff:0.35 });
+    eng.seed(makeWorld('glider', W, H, { radius: p.radius }));
+    eng.readback(s0,'s0');
+    const c0 = centerOfMass(s0);
+    for (let k=0;k<80;k++){ p.time += p.dt; eng.step(p); }
+    eng.readback(s0,'s0'); eng.readback(s1,'s1');
+    const c1 = centerOfMass(s0);
+    const disp = torusDist(c0, c1);
+    const comp = components(s0, 0.1);
+    results.T1 = { start:c0, end:c1, displacement:+disp.toFixed(2), components:comp.big, endMass:+c1.mass.toFixed(1) };
+    log('T1 coherent motion: disp='+disp.toFixed(2)+'px  bigComponents='+comp.big+'  endMass='+c1.mass.toFixed(1));
+  }
+
+  // ---- T2: energy conservation over 200 steps -------------------------------
+  {
+    const p = baseParams({ genome:true, metabolism:true, eat:true, predPayoff:0.5 });
+    eng.seed(makeWorld('collide', W, H, { radius: p.radius }));
+    eng.readback(s0,'s0'); eng.readback(s1,'s1');
+    const e0 = totalEnergy(s0, s1);
+    for (let k=0;k<200;k++){ p.time += p.dt; eng.step(p); }
+    eng.readback(s0,'s0'); eng.readback(s1,'s1');
+    const e1 = totalEnergy(s0, s1);
+    const pct = e0.total>0 ? 100*(e1.total-e0.total)/e0.total : 0;
+    results.T2 = { startTotal:+e0.total.toFixed(2), endTotal:+e1.total.toFixed(2),
+      startCreature:+e0.creature.toFixed(2), endCreature:+e1.creature.toFixed(2),
+      startFree:+e0.free.toFixed(2), endFree:+e1.free.toFixed(2), pctChange:+pct.toFixed(3) };
+    log('T2 energy conservation: start='+e0.total.toFixed(2)+' end='+e1.total.toFixed(2)+' ('+pct.toFixed(3)+'%)');
+  }
+
+  // ---- T3: eating transfer between two adjacent different-genome creatures ---
+  {
+    const p = baseParams({ genome:false, metabolism:false, eat:true, predPayoff:1.0 });
+    // build a minimal two-body world by hand: prey (low aggr) touching predator (high aggr)
+    const a0 = new Float32Array(W*H*4), a1 = new Float32Array(W*H*4);
+    const cy = (H/2)|0, cx = (W/2)|0;
+    const blob = (bx, by, mu, en, ag) => {
+      for (let y=-4;y<=4;y++) for (let x=-4;x<=4;x++) {
+        if (Math.hypot(x,y)>4) continue;
+        const px=((bx+x)%W+W)%W, py=((by+y)%H+H)%H, i=(py*W+px)*4;
+        a0[i]=0.8; a0[i+1]=en; a0[i+2]=mu; a0[i+3]=0.017; a1[i]=ag; a1[i+1]=0.0;
+      }
+    };
+    blob(cx-4, cy, 0.15, 0.0, 0.9);   // predator: genome 0.15, aggressive, empty
+    blob(cx+4, cy, 0.25, 1.0, 0.1);   // prey: genome 0.25 (different), full energy, passive
+    eng.seed({ s0:a0, s1:a1 });
+    eng.readback(s0,'s0'); eng.readback(s1,'s1');
+    // sum energy on predator side (x<cx) vs prey side (x>=cx)
+    const sideEnergy = (arr) => { let pred=0, prey=0; for (let y=0;y<H;y++) for (let x=0;x<W;x++){ const e=arr[(y*W+x)*4+1]; if (x<cx) pred+=e; else prey+=e; } return {pred,prey}; };
+    const before = sideEnergy(s0); const beforeTot = totalEnergy(s0,s1);
+    for (let k=0;k<10;k++){ p.time+=p.dt; eng.step(p); }
+    eng.readback(s0,'s0'); eng.readback(s1,'s1');
+    const after = sideEnergy(s0); const afterTot = totalEnergy(s0,s1);
+    const transferred = after.pred - before.pred;
+    results.T3 = {
+      predBefore:+before.pred.toFixed(3), predAfter:+after.pred.toFixed(3),
+      preyBefore:+before.prey.toFixed(3), preyAfter:+after.prey.toFixed(3),
+      predatorGained:+transferred.toFixed(3),
+      totalBefore:+beforeTot.total.toFixed(3), totalAfter:+afterTot.total.toFixed(3),
+      totalPct:+(100*(afterTot.total-beforeTot.total)/Math.max(1e-6,beforeTot.total)).toFixed(3)
+    };
+    log('T3 eating: predator '+before.pred.toFixed(3)+'->'+after.pred.toFixed(3)+' (gain '+transferred.toFixed(3)+')  prey '+before.prey.toFixed(3)+'->'+after.prey.toFixed(3)+'  totalΔ='+(afterTot.total-beforeTot.total).toFixed(3));
+  }
+
+  // ---- T5: glider + aggression still translates + coherent ------------------
+  {
+    const p = baseParams({ genome:true, metabolism:true, eat:true, predPayoff:0.8 });
+    eng.seed(makeWorld('glider', W, H, { radius: p.radius }));
+    eng.readback(s0,'s0');
+    const c0 = centerOfMass(s0);
+    for (let k=0;k<80;k++){ p.time+=p.dt; eng.step(p); }
+    eng.readback(s0,'s0');
+    const c1 = centerOfMass(s0);
+    const disp = torusDist(c0, c1);
+    const comp = components(s0, 0.1);
+    results.T5 = { displacement:+disp.toFixed(2), components:comp.big, endMass:+c1.mass.toFixed(1) };
+    log('T5 glider+aggression: disp='+disp.toFixed(2)+'px  bigComponents='+comp.big+'  endMass='+c1.mass.toFixed(1));
+  }
+
+  // ---- baseline: pure Lenia (all mods off) for comparison -------------------
+  {
+    const p = baseParams({});
+    eng.seed(makeWorld('glider', W, H, { radius: p.radius }));
+    eng.readback(s0,'s0');
+    const c0 = centerOfMass(s0);
+    for (let k=0;k<80;k++){ p.time+=p.dt; eng.step(p); }
+    eng.readback(s0,'s0');
+    const c1 = centerOfMass(s0);
+    const comp = components(s0, 0.1);
+    results.baselineLenia = { displacement:+torusDist(c0,c1).toFixed(2), components:comp.big, endMass:+c1.mass.toFixed(1) };
+    log('baseline pure-Lenia glider: disp='+torusDist(c0,c1).toFixed(2)+'px  bigComponents='+comp.big);
+  }
+
+  window.__RESULTS__ = results;
+  log('\nDONE');
+}
+run().catch(e => { log('ERROR: '+e.message+'\n'+e.stack); window.__RESULTS__={error:e.message}; });
+</script>
+</body>
+</html>

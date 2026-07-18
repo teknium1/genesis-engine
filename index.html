@@ -30,7 +30,8 @@
     <div id="hud">
       <div class="hud-row"><span class="k">step</span><span id="hud-step" class="v">0</span></div>
       <div class="hud-row"><span class="k">mass</span><span id="hud-mass" class="v">&mdash;</span></div>
-      <div class="hud-row"><span class="k">energy</span><span id="hud-energy" class="v">&mdash;</span></div>
+      <div class="hud-row" title="Total world energy = all creature energy + the free environmental pool. With the conserved-energy model this stays nearly constant: nothing is minted from nothing.">
+        <span class="k">&#9889; total energy</span><span id="hud-energy" class="v">&mdash;</span></div>
       <div class="hud-row"><span class="k">species</span><span id="hud-species" class="v">&mdash;</span></div>
       <div class="hud-row"><span class="k">fps</span><span id="hud-fps" class="v">&mdash;</span></div>
       <div class="hud-row worms"><span class="k">&#128027; worms</span><span id="hud-worms" class="v">0</span></div>
@@ -47,16 +48,16 @@
       <label class="ctl" title="Pick a starting world. Gliders are ready-made creatures that move on their own; soup and blobs start as random goo you watch try to organize itself.">
         <span>Preset world <i class="info" data-tip="Pick a starting world. Gliders are ready-made creatures that move on their own; soup and blobs start as random goo you watch try to organize itself.">&#9432;</i></span>
         <select id="ctl-preset">
-          <option value="glider">Single glider</option>
-          <option value="garden" selected>Glider garden</option>
+          <option value="glider" selected>Single glider</option>
+          <option value="garden">Glider garden</option>
           <option value="collide">Glider collision</option>
           <option value="blobs">Soft blobs</option>
           <option value="soup">Primordial soup</option>
         </select>
       </label>
       <label class="ctl slider">
-        <span>Speed <i class="info" data-tip="How fast the world runs. Higher = more simulation happens each second, so evolution and motion go faster. Turn this UP if things feel slow. (It does NOT change the physics, just how quickly you watch it.)">&#9432;</i> <b id="v-speed">2&times;</b></span>
-        <input id="ctl-speed" type="range" min="1" max="24" step="1" value="2"
+        <span>Speed <i class="info" data-tip="How fast the world runs. Higher = more simulation happens each second, so evolution and motion go faster. Turn this UP if things feel slow. (It does NOT change the physics, just how quickly you watch it.)">&#9432;</i> <b id="v-speed">3&times;</b></span>
+        <input id="ctl-speed" type="range" min="1" max="24" step="1" value="3"
           title="How fast the world runs. Higher = faster. Doesn't change the rules, just the playback speed." />
       </label>
       <label class="ctl slider">
@@ -73,17 +74,29 @@
 
     <section>
       <h2>Physics of life <i class="info" data-tip="Optional rules you can switch on/off to see how each one changes the world. None of them are required for creatures to live.">&#9432;</i></h2>
-      <label class="ctl toggle" title="Keeps the total amount of 'stuff' in the world roughly constant, so creatures have to compete for a fixed budget of matter instead of the world filling up or fading out.">
-        <input id="ctl-mass" type="checkbox" checked />
-        <span>Mass conservation <em>(Flow-Lenia)</em> <i class="info" data-tip="Keeps the total amount of 'stuff' in the world roughly constant, so creatures compete for a fixed budget of matter instead of the world filling up or fading out.">&#9432;</i></span>
-      </label>
       <label class="ctl toggle" title="Gives every creature its own tiny 'genes' that live inside its body and can mutate and get passed along. This is what lets different species exist and slowly change.">
         <input id="ctl-genome" type="checkbox" checked />
         <span>Embedded genome <em>(evolvable genes)</em> <i class="info" data-tip="Gives every creature its own tiny 'genes' that live inside its body and can mutate and pass along — the thing that lets species differ and change over time.">&#9432;</i></span>
       </label>
-      <label class="ctl toggle" title="Adds a food/energy economy: light from the top of the world becomes energy, and creatures spend energy to grow. Makes some regions richer than others, like sunlight in a pond.">
+      <label class="ctl toggle" title="A CONSERVED food/energy economy: light draws energy out of a finite environmental pool into creatures; when creatures die that energy returns to the pool. Total world energy stays constant — nothing is minted from nothing.">
         <input id="ctl-metabolism" type="checkbox" checked />
-        <span>Metabolic energy <em>(food economy)</em> <i class="info" data-tip="A food/energy economy: light from the top becomes energy that creatures spend to grow. Makes some regions richer than others, like sunlight in a pond.">&#9432;</i></span>
+        <span>Metabolic energy <em>(conserved)</em> <i class="info" data-tip="A conserved food/energy economy. Light pulls energy from a finite shared pool into creatures; dying creatures give it back. Total energy (creatures + pool) stays constant — nothing is created from nothing. Watch the '&#9889; total energy' readout hold steady.">&#9432;</i></span>
+      </label>
+      <label class="ctl toggle" title="Eating: a creature touching a DIFFERENT-species neighbor can drain some of its stored energy. It is a TRANSFER — what one loses the other gains — so total energy is still conserved. Every creature can both photosynthesize AND eat; how aggressive each one is, is an evolvable gene.">
+        <input id="ctl-eat" type="checkbox" checked />
+        <span>Eating <em>(energy transfer)</em> <i class="info" data-tip="A creature touching a DIFFERENT-species neighbor can drain some of its stored energy. It is a transfer — what one loses, the other gains — so total energy is conserved. Every creature can photosynthesize AND eat; how aggressive it is, is an evolvable gene.">&#9432;</i></span>
+      </label>
+      <label class="ctl toggle" title="Keeps the total amount of 'stuff' in the world roughly constant. OFF by default because it slightly dampens motion; turn it on for the research 'fixed matter budget' regime.">
+        <input id="ctl-mass" type="checkbox" />
+        <span>Mass conservation <em>(Flow-Lenia)</em> <i class="info" data-tip="Keeps the total amount of matter roughly constant so creatures compete for a fixed budget. OFF by default because it slightly dampens motion; a research option.">&#9432;</i></span>
+      </label>
+      <label class="ctl toggle" title="Draw the light as a visible backdrop so it is legible instead of an invisible rule. Off by default (light is uniform and invisible).">
+        <input id="ctl-showlight" type="checkbox" />
+        <span>Show light <em>(backdrop)</em> <i class="info" data-tip="Draws the light as a faint visible backdrop so you can SEE it, instead of it being an invisible rule. Off by default.">&#9432;</i></span>
+      </label>
+      <label class="ctl toggle" title="Make light brighter on one side (a gradient) instead of uniform everywhere. Off by default so there is no hidden, unreachable 'best spot' — turn on (with Show light) to see the gradient drawn.">
+        <input id="ctl-lightgrad" type="checkbox" />
+        <span>Gradient light <em>(uneven)</em> <i class="info" data-tip="By default light is UNIFORM everywhere (no hidden 'top'). Turn this on to make one side brighter — enable 'Show light' too so the gradient is actually visible.">&#9432;</i></span>
       </label>
       <label class="ctl toggle" title="A boredom detector. If the world stops changing for a long time, it gives it a tiny random poke to try to get things moving again. Off by default so you see the true, unassisted behavior.">
         <input id="ctl-curiosity" type="checkbox" />
@@ -113,6 +126,11 @@
         <input id="ctl-light" type="range" min="0.0" max="1.0" step="0.01" value="0.35"
           title="How much food/energy the world makes (needs Metabolic energy on). More = easy growth, less = scarcity." />
       </label>
+      <label class="ctl slider">
+        <span>Predation payoff <i class="info" data-tip="How much a creature actually GAINS from eating a neighbor. Low = eating is inefficient, so predators usually lose out and photosynthesis wins (honest emergence). High = eating pays well, so aggressive predators tend to take over. Slide it to pick the world you want.">&#9432;</i> <b id="v-predpayoff">0.35</b></span>
+        <input id="ctl-predpayoff" type="range" min="0.0" max="1.0" step="0.01" value="0.35"
+          title="How much eating pays the aggressor. Low = predation usually loses (honest). High = predators win. Needs Eating on." />
+      </label>
     </section>
 
     <section>
@@ -123,6 +141,7 @@
           <option value="species">Species (by genes)</option>
           <option value="mass">Amount of stuff</option>
           <option value="energy">Energy / food</option>
+          <option value="aggression">Aggression (predators)</option>
           <option value="potential">Force field</option>
         </select>
       </label>
@@ -150,8 +169,9 @@
     <ul>
       <li><b>Lenia base</b> &mdash; a continuous cellular automaton whose gliders (like <em>Orbium</em>) genuinely swim and collide. Start with the glider presets to see real motion. <span class="cite">(Chan)</span></li>
       <li><b>Embedded genome</b> &mdash; each creature carries its own growth-rule genes (&mu;,&sigma;) <em>inside</em> the medium, so they can mutate and drift. <span class="cite">(Flow-Lenia parameter localization)</span></li>
-      <li><b>Metabolic economy</b> &mdash; a light field becomes energy that gates growth; scarcity carves out niches. <span class="cite">(Biomaker&nbsp;CA)</span></li>
-      <li><b>Mass conservation</b> &mdash; the world's total matter is held near its seeded budget, so patterns compete instead of exploding or bleeding away. <span class="cite">(Flow-Lenia)</span></li>
+      <li><b>Conserved energy economy</b> &mdash; the world has a <em>finite</em> energy budget. Uniform light pulls energy from a shared pool into creatures; dying creatures return it. Total energy (creatures + pool) stays constant &mdash; nothing is minted from nothing. <span class="cite">(Biomaker&nbsp;CA)</span></li>
+      <li><b>Eating</b> &mdash; every creature can both photosynthesize <em>and</em> drain energy from a touching, different-species neighbor. Eating is a <em>transfer</em> (conserved); an evolvable <em>aggression</em> gene sets who eats whom, and the <b>Predation payoff</b> slider decides whether hunting pays. <span class="cite">(emergent predation)</span></li>
+      <li><b>Mass conservation</b> (off by default) &mdash; optionally hold the world's total matter near its seeded budget so patterns compete for a fixed resource. <span class="cite">(Flow-Lenia)</span></li>
       <li><b>Novelty drive</b> (off by default) &mdash; watches the world and gives it a rare, gentle nudge only if it truly stalls. <span class="cite">(inspired by ASAL, Sakana&nbsp;AI)</span></li>
     </ul>
     <p>Try <b>Glider collision</b> to watch creatures interact, or <b>Primordial soup</b> to watch self-organization (and often, honestly, a freeze). Keep an eye out for <b>&#128027;&nbsp;worms</b>.</p>
