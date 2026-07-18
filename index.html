@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Genesis Engine &mdash; an open-ended artificial-life substrate</title>
+<meta name="description" content="A browser-native artificial-life substrate that fuses mass conservation, an embedded evolvable genome, a metabolic energy economy, and a novelty drive into one world that resists stalling." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="app">
+  <header id="topbar">
+    <div class="brand">
+      <span class="glyph">&#9903;</span>
+      <div>
+        <h1>Genesis Engine</h1>
+        <p class="tagline">life as it could be &mdash; running on your machine</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button id="btn-play" class="primary" title="Play / pause (space)">&#10073;&#10073; Pause</button>
+      <button id="btn-reset" title="Re-seed the world (r)">&#8635; Re-seed</button>
+      <button id="btn-help" title="What is this?">?</button>
+    </div>
+  </header>
+
+  <main id="stage">
+    <canvas id="sim"></canvas>
+    <div id="hud">
+      <div class="hud-row"><span class="k">step</span><span id="hud-step" class="v">0</span></div>
+      <div class="hud-row"><span class="k">mass</span><span id="hud-mass" class="v">&mdash;</span></div>
+      <div class="hud-row"><span class="k">energy</span><span id="hud-energy" class="v">&mdash;</span></div>
+      <div class="hud-row"><span class="k">species</span><span id="hud-species" class="v">&mdash;</span></div>
+      <div class="hud-row"><span class="k">fps</span><span id="hud-fps" class="v">&mdash;</span></div>
+      <div class="hud-row worms"><span class="k">&#128027; worms</span><span id="hud-worms" class="v">0</span></div>
+    </div>
+    <div id="novelty-wrap" title="Temporal novelty of the world in a compact feature space. High = the world is still surprising. When it collapses, the curiosity drive perturbs the medium (ASAL-inspired anti-stall).">
+      <div class="novelty-label">novelty drive <span id="novelty-num">0.00</span></div>
+      <canvas id="novelty-graph" width="220" height="46"></canvas>
+    </div>
+  </main>
+
+  <aside id="panel">
+    <section>
+      <h2>Substrate</h2>
+      <label class="ctl">
+        <span>Preset world</span>
+        <select id="ctl-preset">
+          <option value="primordial">Primordial soup</option>
+          <option value="orbium">Orbium garden (single-species)</option>
+          <option value="multispecies">Multi-species reef</option>
+          <option value="scarcity">Energy scarcity</option>
+          <option value="worms">Worm hunt</option>
+        </select>
+      </label>
+      <label class="ctl slider">
+        <span>Time step <b id="v-dt">0.10</b></span>
+        <input id="ctl-dt" type="range" min="0.02" max="0.30" step="0.01" value="0.10" />
+      </label>
+      <label class="ctl slider">
+        <span>Kernel radius <b id="v-radius">13</b></span>
+        <input id="ctl-radius" type="range" min="6" max="24" step="1" value="13" />
+      </label>
+    </section>
+
+    <section>
+      <h2>Physics of life</h2>
+      <label class="ctl toggle">
+        <input id="ctl-mass" type="checkbox" checked />
+        <span>Mass conservation <em>(Flow-Lenia)</em></span>
+      </label>
+      <label class="ctl toggle">
+        <input id="ctl-genome" type="checkbox" checked />
+        <span>Embedded genome <em>(parameter localization)</em></span>
+      </label>
+      <label class="ctl toggle">
+        <input id="ctl-metabolism" type="checkbox" checked />
+        <span>Metabolic energy <em>(Biomaker-style)</em></span>
+      </label>
+      <label class="ctl toggle">
+        <input id="ctl-curiosity" type="checkbox" checked />
+        <span>Novelty drive <em>(ASAL-inspired)</em></span>
+      </label>
+    </section>
+
+    <section>
+      <h2>Evolution</h2>
+      <label class="ctl slider">
+        <span>Mutation rate <b id="v-mut">0.006</b></span>
+        <input id="ctl-mut" type="range" min="0" max="0.03" step="0.001" value="0.006" />
+      </label>
+      <label class="ctl slider">
+        <span>Flow strength <b id="v-flow">2.6</b></span>
+        <input id="ctl-flow" type="range" min="0.5" max="5.0" step="0.1" value="2.6" />
+      </label>
+      <label class="ctl slider">
+        <span>Light influx <b id="v-light">0.35</b></span>
+        <input id="ctl-light" type="range" min="0.0" max="1.0" step="0.01" value="0.35" />
+      </label>
+    </section>
+
+    <section>
+      <h2>View</h2>
+      <label class="ctl">
+        <span>Color by</span>
+        <select id="ctl-view">
+          <option value="species">Species (genome)</option>
+          <option value="mass">Mass</option>
+          <option value="energy">Energy</option>
+          <option value="flow">Flow field</option>
+        </select>
+      </label>
+      <div class="btn-row">
+        <button id="btn-snap">&#128247; Snapshot</button>
+        <button id="btn-share">&#128279; Copy world link</button>
+      </div>
+      <p class="hint">Click / drag on the world to inject matter and stir the medium.</p>
+    </section>
+
+    <footer class="credits">
+      <p>Open-source. Runs 100% in your browser via WebGL2.</p>
+      <p><a id="repo-link" href="#" target="_blank" rel="noopener">Source &amp; the science &rarr;</a></p>
+    </footer>
+  </aside>
+</div>
+
+<div id="help-modal" class="modal hidden">
+  <div class="modal-card">
+    <button id="help-close" class="modal-close">&times;</button>
+    <h2>&#9903; What am I looking at?</h2>
+    <p>The <b>Genesis Engine</b> is an artificial-life substrate &mdash; a tiny universe whose only hand-written rules are physics. Everything else (creatures, species, predators, replicators) is meant to <em>emerge</em>, not to be programmed in.</p>
+    <p>It grew out of one question the artificial-life field keeps hitting: virtual life always <b>stalls</b> &mdash; it fills the world, converges to something simple, and stops surprising you. Real life complexified for four billion years. So the Engine fuses the four ingredients that recent research (2022&ndash;2026) argues are the missing pieces, into a single world:</p>
+    <ul>
+      <li><b>Mass conservation</b> &mdash; matter flows, it is never created from nothing. Patterns must fight over a finite budget of stuff. <span class="cite">(Flow-Lenia, Plantec et&nbsp;al.)</span></li>
+      <li><b>An embedded genome</b> &mdash; each creature carries its own update-rule parameters <em>inside</em> the medium, so the genome can truly mutate and many species can share one world. <span class="cite">(parameter localization)</span></li>
+      <li><b>A metabolic economy</b> &mdash; light becomes energy, energy maintains structure and pays for reproduction. Scarcity carves out niches. <span class="cite">(Biomaker&nbsp;CA)</span></li>
+      <li><b>A novelty drive</b> &mdash; the world watches itself; when it gets boring it stirs the pot. <span class="cite">(inspired by ASAL, Sakana&nbsp;AI)</span></li>
+    </ul>
+    <p>Watch the <b>novelty drive</b> meter and keep an eye out for <b>&#128027;&nbsp;worms</b> &mdash; where there are worms, replicators are usually hiding nearby.</p>
+    <p class="dismiss-hint">Press <kbd>space</kbd> to pause, <kbd>r</kbd> to re-seed, click the world to poke it.</p>
+  </div>
+</div>
+
+<div id="nowebgl" class="modal hidden">
+  <div class="modal-card">
+    <h2>WebGL2 required</h2>
+    <p>The Genesis Engine runs the whole simulation on your GPU using WebGL2. Your browser or device didn't expose it. Try a recent Chrome, Firefox, Edge, or Safari on a machine with a GPU.</p>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
