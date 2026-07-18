@@ -10,6 +10,7 @@ const $ = (id) => document.getElementById(id);
 const params = {
   preset: 'garden',
   dt: 0.10,
+  speed: 2,
   radius: 13,
   massConserve: true,
   genome: true,
@@ -110,13 +111,14 @@ function loop() {
     frames = 0; lastFpsT = now; $('hud-fps').textContent = String(fps);
   }
   if (running) {
-    for (let k = 0; k < 2; k++) {
+    const steps = Math.max(1, Math.round(params.speed));
+    for (let k = 0; k < steps; k++) {
       params.time += params.dt;
       engine.step(params);
       stepCount++;
       if (params.poke[0] >= 0) params.poke = [-1, -1];
     }
-    if (stepCount % METRIC_EVERY === 0) sampleMetrics();
+    if (stepCount % METRIC_EVERY < steps) sampleMetrics();
   }
   engine.render(params.view, cam);
   $('hud-step').textContent = String(stepCount);
@@ -132,6 +134,7 @@ function bindUI() {
 
   $('ctl-preset').addEventListener('change', (e) => { params.preset = e.target.value; reseed(); });
 
+  bindSlider('ctl-speed', 'v-speed', 'speed', (v) => `${v | 0}\u00d7`);
   bindSlider('ctl-dt', 'v-dt', 'dt', (v) => v.toFixed(2));
   bindSlider('ctl-radius', 'v-radius', 'radius', (v) => String(v | 0));
   bindSlider('ctl-mu', 'v-mu', 'mu', (v) => v.toFixed(3));
@@ -247,7 +250,7 @@ function snapshot() {
 
 function shareLink() {
   const q = new URLSearchParams({
-    p: params.preset, dt: params.dt, r: params.radius, mu: params.mu, sg: params.sigma,
+    p: params.preset, dt: params.dt, sp: params.speed, r: params.radius, mu: params.mu, sg: params.sigma,
     mut: params.mut, li: params.light,
     mc: params.massConserve ? 1 : 0, gn: params.genome ? 1 : 0,
     mb: params.metabolism ? 1 : 0, cu: params.curiosityOn ? 1 : 0, v: params.view,
@@ -273,6 +276,7 @@ function loadFromURL() {
   };
   const chk = (id, key, val) => { if (val != null) { const b = val === '1'; $(id).checked = b; params[key] = b; } };
   if (q.get('p')) { $('ctl-preset').value = q.get('p'); params.preset = q.get('p'); }
+  num('ctl-speed', 'v-speed', 'speed', q.get('sp'), (v) => `${v | 0}\u00d7`);
   num('ctl-dt', 'v-dt', 'dt', q.get('dt'), (v) => v.toFixed(2));
   num('ctl-radius', 'v-radius', 'radius', q.get('r'), (v) => String(v | 0));
   num('ctl-mu', 'v-mu', 'mu', q.get('mu'), (v) => v.toFixed(3));

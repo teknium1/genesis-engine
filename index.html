@@ -44,8 +44,8 @@
   <aside id="panel">
     <section>
       <h2>Substrate</h2>
-      <label class="ctl">
-        <span>Preset world</span>
+      <label class="ctl" title="Pick a starting world. Gliders are ready-made creatures that move on their own; soup and blobs start as random goo you watch try to organize itself.">
+        <span>Preset world <i class="info" data-tip="Pick a starting world. Gliders are ready-made creatures that move on their own; soup and blobs start as random goo you watch try to organize itself.">&#9432;</i></span>
         <select id="ctl-preset">
           <option value="glider">Single glider</option>
           <option value="garden" selected>Glider garden</option>
@@ -55,71 +55,82 @@
         </select>
       </label>
       <label class="ctl slider">
-        <span>Time step <b id="v-dt">0.10</b></span>
-        <input id="ctl-dt" type="range" min="0.02" max="0.30" step="0.01" value="0.10" />
+        <span>Speed <i class="info" data-tip="How fast the world runs. Higher = more simulation happens each second, so evolution and motion go faster. Turn this UP if things feel slow. (It does NOT change the physics, just how quickly you watch it.)">&#9432;</i> <b id="v-speed">2&times;</b></span>
+        <input id="ctl-speed" type="range" min="1" max="24" step="1" value="2"
+          title="How fast the world runs. Higher = faster. Doesn't change the rules, just the playback speed." />
       </label>
       <label class="ctl slider">
-        <span>Kernel radius <b id="v-radius">13</b></span>
-        <input id="ctl-radius" type="range" min="6" max="24" step="1" value="13" />
+        <span>Time step <i class="info" data-tip="How big a jump the world takes each tick. Small = smooth and stable but slow. Large = faster but creatures can get jittery or fall apart. Leave near 0.10 unless experimenting.">&#9432;</i> <b id="v-dt">0.10</b></span>
+        <input id="ctl-dt" type="range" min="0.02" max="0.30" step="0.01" value="0.10"
+          title="How big a jump the world takes each tick. Small = smooth/stable/slow. Large = fast but jittery." />
+      </label>
+      <label class="ctl slider">
+        <span>Creature size <i class="info" data-tip="How large each creature is (the reach of the rule that decides how a cell grows). Bigger = larger, chunkier organisms. Smaller = tiny, fast ones. Changing this mid-run usually breaks existing creatures.">&#9432;</i> <b id="v-radius">13</b></span>
+        <input id="ctl-radius" type="range" min="6" max="24" step="1" value="13"
+          title="How large each creature is. Bigger number = bigger organisms. Changing mid-run can break creatures." />
       </label>
     </section>
 
     <section>
-      <h2>Physics of life</h2>
-      <label class="ctl toggle">
+      <h2>Physics of life <i class="info" data-tip="Optional rules you can switch on/off to see how each one changes the world. None of them are required for creatures to live.">&#9432;</i></h2>
+      <label class="ctl toggle" title="Keeps the total amount of 'stuff' in the world roughly constant, so creatures have to compete for a fixed budget of matter instead of the world filling up or fading out.">
         <input id="ctl-mass" type="checkbox" checked />
-        <span>Mass conservation <em>(Flow-Lenia)</em></span>
+        <span>Mass conservation <em>(Flow-Lenia)</em> <i class="info" data-tip="Keeps the total amount of 'stuff' in the world roughly constant, so creatures compete for a fixed budget of matter instead of the world filling up or fading out.">&#9432;</i></span>
       </label>
-      <label class="ctl toggle">
+      <label class="ctl toggle" title="Gives every creature its own tiny 'genes' that live inside its body and can mutate and get passed along. This is what lets different species exist and slowly change.">
         <input id="ctl-genome" type="checkbox" checked />
-        <span>Embedded genome <em>(parameter localization)</em></span>
+        <span>Embedded genome <em>(evolvable genes)</em> <i class="info" data-tip="Gives every creature its own tiny 'genes' that live inside its body and can mutate and pass along — the thing that lets species differ and change over time.">&#9432;</i></span>
       </label>
-      <label class="ctl toggle">
+      <label class="ctl toggle" title="Adds a food/energy economy: light from the top of the world becomes energy, and creatures spend energy to grow. Makes some regions richer than others, like sunlight in a pond.">
         <input id="ctl-metabolism" type="checkbox" checked />
-        <span>Metabolic energy <em>(Biomaker-style)</em></span>
+        <span>Metabolic energy <em>(food economy)</em> <i class="info" data-tip="A food/energy economy: light from the top becomes energy that creatures spend to grow. Makes some regions richer than others, like sunlight in a pond.">&#9432;</i></span>
       </label>
-      <label class="ctl toggle">
+      <label class="ctl toggle" title="A boredom detector. If the world stops changing for a long time, it gives it a tiny random poke to try to get things moving again. Off by default so you see the true, unassisted behavior.">
         <input id="ctl-curiosity" type="checkbox" />
-        <span>Novelty drive <em>(ASAL-inspired)</em></span>
+        <span>Novelty drive <em>(anti-boredom)</em> <i class="info" data-tip="A boredom detector: if the world stalls for a long time it gives a tiny random poke to restart activity. Off by default so you see the true, unassisted behavior.">&#9432;</i></span>
       </label>
     </section>
 
     <section>
       <h2>Rule &amp; evolution</h2>
       <label class="ctl slider">
-        <span>Growth center &mu; <b id="v-mu">0.150</b></span>
-        <input id="ctl-mu" type="range" min="0.08" max="0.30" step="0.005" value="0.150" />
+        <span>Growth sweet-spot &mu; <i class="info" data-tip="How crowded a cell 'likes' its neighborhood to be before it grows. Low = creatures like being sparse/thin. High = they like being dense/blobby. This is the core knob that decides what kind of life appears.">&#9432;</i> <b id="v-mu">0.150</b></span>
+        <input id="ctl-mu" type="range" min="0.08" max="0.30" step="0.005" value="0.150"
+          title="How crowded a cell likes its neighborhood before it grows. Low = thin/sparse creatures, high = dense/blobby. The core 'what kind of life' knob." />
       </label>
       <label class="ctl slider">
-        <span>Growth width &sigma; <b id="v-sigma">0.017</b></span>
-        <input id="ctl-sigma" type="range" min="0.008" max="0.05" step="0.001" value="0.017" />
+        <span>Growth tolerance &sigma; <i class="info" data-tip="How picky that sweet-spot is. Small = very fussy, only exact conditions grow (fragile, precise creatures). Large = forgiving, lots of conditions grow (soft, fuzzy blobs).">&#9432;</i> <b id="v-sigma">0.017</b></span>
+        <input id="ctl-sigma" type="range" min="0.008" max="0.05" step="0.001" value="0.017"
+          title="How picky the growth sweet-spot is. Small = fussy/precise/fragile creatures. Large = forgiving/soft/fuzzy blobs." />
       </label>
       <label class="ctl slider">
-        <span>Mutation rate <b id="v-mut">0.003</b></span>
-        <input id="ctl-mut" type="range" min="0" max="0.02" step="0.001" value="0.003" />
+        <span>Mutation rate <i class="info" data-tip="How often the creatures' genes randomly change. Zero = perfect copies forever (no evolution). Higher = faster change, but too high turns everything to noise.">&#9432;</i> <b id="v-mut">0.003</b></span>
+        <input id="ctl-mut" type="range" min="0" max="0.02" step="0.001" value="0.003"
+          title="How often genes randomly change. Zero = no evolution. Higher = faster change, but too high = noise." />
       </label>
       <label class="ctl slider">
-        <span>Light influx <b id="v-light">0.35</b></span>
-        <input id="ctl-light" type="range" min="0.0" max="1.0" step="0.01" value="0.35" />
+        <span>Sunlight <i class="info" data-tip="How much energy/food the world produces (only matters when Metabolic energy is on). More sunlight = creatures grow and reproduce more easily; low = scarcity and struggle.">&#9432;</i> <b id="v-light">0.35</b></span>
+        <input id="ctl-light" type="range" min="0.0" max="1.0" step="0.01" value="0.35"
+          title="How much food/energy the world makes (needs Metabolic energy on). More = easy growth, less = scarcity." />
       </label>
     </section>
 
     <section>
       <h2>View</h2>
-      <label class="ctl">
-        <span>Color by</span>
+      <label class="ctl" title="Changes what the colors mean on screen — a different lens on the same world.">
+        <span>Color by <i class="info" data-tip="Changes what the colors mean on screen. 'Species' colors creatures by their genes; 'Mass' shows how much stuff is where; 'Energy' shows the food economy; 'Potential field' shows the invisible force field driving growth.">&#9432;</i></span>
         <select id="ctl-view">
-          <option value="species">Species (genome)</option>
-          <option value="mass">Mass</option>
-          <option value="energy">Energy</option>
-          <option value="potential">Potential field</option>
+          <option value="species">Species (by genes)</option>
+          <option value="mass">Amount of stuff</option>
+          <option value="energy">Energy / food</option>
+          <option value="potential">Force field</option>
         </select>
       </label>
       <div class="btn-row">
-        <button id="btn-snap">&#128247; Snapshot</button>
-        <button id="btn-share">&#128279; Copy world link</button>
+        <button id="btn-snap" title="Save a PNG image of the current world to your computer.">&#128247; Snapshot</button>
+        <button id="btn-share" title="Copy a link that reproduces this exact world and settings, so you can share or bookmark it.">&#128279; Copy world link</button>
       </div>
-      <button id="btn-recenter" style="width:100%;margin-top:8px;">&#8982; Reset view</button>
+      <button id="btn-recenter" style="width:100%;margin-top:8px;" title="Return the camera to the default zoom and position.">&#8982; Reset view</button>
       <p class="hint"><b>Drag</b> to pan &middot; <b>scroll</b> to zoom &middot; <b>Shift+click</b> to inject matter &middot; <b>Alt+click</b> to erase.</p>
     </section>
 

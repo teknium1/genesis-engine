@@ -138,6 +138,33 @@ input[type=range]::-moz-range-thumb {
 .ctl.toggle em { color: var(--dimmer); font-style: normal; font-size: 11px; }
 .ctl.toggle input { width: 16px; height: 16px; accent-color: var(--accent); }
 
+/* info chip + custom fast tooltip */
+.info {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px; margin-left: 2px;
+  font-size: 11px; font-style: normal; color: var(--dimmer);
+  border: 1px solid var(--line); border-radius: 50%;
+  cursor: help; position: relative; vertical-align: middle;
+  transition: color .15s, border-color .15s;
+}
+.info:hover { color: var(--accent); border-color: var(--accent); }
+.info::after {
+  content: attr(data-tip);
+  position: absolute; bottom: 130%; right: -4px;
+  width: 240px; max-width: 60vw;
+  background: #0a0d15; color: var(--ink);
+  border: 1px solid var(--line); border-radius: 8px;
+  padding: 9px 11px; font-size: 12px; line-height: 1.5; font-weight: 400;
+  text-align: left; letter-spacing: .1px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.55);
+  opacity: 0; pointer-events: none; transform: translateY(4px);
+  transition: opacity .12s, transform .12s; z-index: 40;
+}
+.info:hover::after { opacity: 1; transform: translateY(0); }
+/* keep the tooltip from clipping at the top of the panel */
+#panel section:first-child .info::after { bottom: auto; top: 130%; }
+h2 .info { width: 15px; height: 15px; }
+
 .btn-row { display: flex; gap: 8px; }
 .btn-row button { flex: 1; font-size: 12px; }
 .hint { font-size: 11px; color: var(--dimmer); margin: 10px 0 0; line-height: 1.5; }
