@@ -47,11 +47,11 @@
       <label class="ctl">
         <span>Preset world</span>
         <select id="ctl-preset">
-          <option value="primordial">Primordial soup</option>
-          <option value="orbium">Orbium garden (single-species)</option>
-          <option value="multispecies">Multi-species reef</option>
-          <option value="scarcity">Energy scarcity</option>
-          <option value="worms">Worm hunt</option>
+          <option value="glider">Single glider</option>
+          <option value="garden" selected>Glider garden</option>
+          <option value="collide">Glider collision</option>
+          <option value="blobs">Soft blobs</option>
+          <option value="soup">Primordial soup</option>
         </select>
       </label>
       <label class="ctl slider">
@@ -79,20 +79,24 @@
         <span>Metabolic energy <em>(Biomaker-style)</em></span>
       </label>
       <label class="ctl toggle">
-        <input id="ctl-curiosity" type="checkbox" checked />
+        <input id="ctl-curiosity" type="checkbox" />
         <span>Novelty drive <em>(ASAL-inspired)</em></span>
       </label>
     </section>
 
     <section>
-      <h2>Evolution</h2>
+      <h2>Rule &amp; evolution</h2>
       <label class="ctl slider">
-        <span>Mutation rate <b id="v-mut">0.006</b></span>
-        <input id="ctl-mut" type="range" min="0" max="0.03" step="0.001" value="0.006" />
+        <span>Growth center &mu; <b id="v-mu">0.150</b></span>
+        <input id="ctl-mu" type="range" min="0.08" max="0.30" step="0.005" value="0.150" />
       </label>
       <label class="ctl slider">
-        <span>Flow strength <b id="v-flow">2.6</b></span>
-        <input id="ctl-flow" type="range" min="0.5" max="5.0" step="0.1" value="2.6" />
+        <span>Growth width &sigma; <b id="v-sigma">0.017</b></span>
+        <input id="ctl-sigma" type="range" min="0.008" max="0.05" step="0.001" value="0.017" />
+      </label>
+      <label class="ctl slider">
+        <span>Mutation rate <b id="v-mut">0.003</b></span>
+        <input id="ctl-mut" type="range" min="0" max="0.02" step="0.001" value="0.003" />
       </label>
       <label class="ctl slider">
         <span>Light influx <b id="v-light">0.35</b></span>
@@ -108,14 +112,15 @@
           <option value="species">Species (genome)</option>
           <option value="mass">Mass</option>
           <option value="energy">Energy</option>
-          <option value="flow">Flow field</option>
+          <option value="potential">Potential field</option>
         </select>
       </label>
       <div class="btn-row">
         <button id="btn-snap">&#128247; Snapshot</button>
         <button id="btn-share">&#128279; Copy world link</button>
       </div>
-      <p class="hint">Click / drag on the world to inject matter and stir the medium.</p>
+      <button id="btn-recenter" style="width:100%;margin-top:8px;">&#8982; Reset view</button>
+      <p class="hint"><b>Drag</b> to pan &middot; <b>scroll</b> to zoom &middot; <b>Shift+click</b> to inject matter &middot; <b>Alt+click</b> to erase.</p>
     </section>
 
     <footer class="credits">
@@ -130,15 +135,16 @@
     <button id="help-close" class="modal-close">&times;</button>
     <h2>&#9903; What am I looking at?</h2>
     <p>The <b>Genesis Engine</b> is an artificial-life substrate &mdash; a tiny universe whose only hand-written rules are physics. Everything else (creatures, species, predators, replicators) is meant to <em>emerge</em>, not to be programmed in.</p>
-    <p>It grew out of one question the artificial-life field keeps hitting: virtual life always <b>stalls</b> &mdash; it fills the world, converges to something simple, and stops surprising you. Real life complexified for four billion years. So the Engine fuses the four ingredients that recent research (2022&ndash;2026) argues are the missing pieces, into a single world:</p>
+    <p>It grew out of one question the artificial-life field keeps hitting: virtual life always <b>stalls</b> &mdash; it dies out, or it freezes into something static and stops surprising you. Real life complexified for four billion years. Nobody has solved this; it is <em>the</em> open problem. The Engine's honest take: build on a substrate that reliably produces living, <em>moving</em> creatures (Lenia), then layer on the four ingredients recent research (2022&ndash;2026) argues push toward open-endedness &mdash; and let you toggle each one to see what it does.</p>
     <ul>
-      <li><b>Mass conservation</b> &mdash; matter flows, it is never created from nothing. Patterns must fight over a finite budget of stuff. <span class="cite">(Flow-Lenia, Plantec et&nbsp;al.)</span></li>
-      <li><b>An embedded genome</b> &mdash; each creature carries its own update-rule parameters <em>inside</em> the medium, so the genome can truly mutate and many species can share one world. <span class="cite">(parameter localization)</span></li>
-      <li><b>A metabolic economy</b> &mdash; light becomes energy, energy maintains structure and pays for reproduction. Scarcity carves out niches. <span class="cite">(Biomaker&nbsp;CA)</span></li>
-      <li><b>A novelty drive</b> &mdash; the world watches itself; when it gets boring it stirs the pot. <span class="cite">(inspired by ASAL, Sakana&nbsp;AI)</span></li>
+      <li><b>Lenia base</b> &mdash; a continuous cellular automaton whose gliders (like <em>Orbium</em>) genuinely swim and collide. Start with the glider presets to see real motion. <span class="cite">(Chan)</span></li>
+      <li><b>Embedded genome</b> &mdash; each creature carries its own growth-rule genes (&mu;,&sigma;) <em>inside</em> the medium, so they can mutate and drift. <span class="cite">(Flow-Lenia parameter localization)</span></li>
+      <li><b>Metabolic economy</b> &mdash; a light field becomes energy that gates growth; scarcity carves out niches. <span class="cite">(Biomaker&nbsp;CA)</span></li>
+      <li><b>Mass conservation</b> &mdash; the world's total matter is held near its seeded budget, so patterns compete instead of exploding or bleeding away. <span class="cite">(Flow-Lenia)</span></li>
+      <li><b>Novelty drive</b> (off by default) &mdash; watches the world and gives it a rare, gentle nudge only if it truly stalls. <span class="cite">(inspired by ASAL, Sakana&nbsp;AI)</span></li>
     </ul>
-    <p>Watch the <b>novelty drive</b> meter and keep an eye out for <b>&#128027;&nbsp;worms</b> &mdash; where there are worms, replicators are usually hiding nearby.</p>
-    <p class="dismiss-hint">Press <kbd>space</kbd> to pause, <kbd>r</kbd> to re-seed, click the world to poke it.</p>
+    <p>Try <b>Glider collision</b> to watch creatures interact, or <b>Primordial soup</b> to watch self-organization (and often, honestly, a freeze). Keep an eye out for <b>&#128027;&nbsp;worms</b>.</p>
+    <p class="dismiss-hint"><kbd>space</kbd> pause &middot; <kbd>r</kbd> re-seed &middot; <b>drag</b> to pan &middot; <b>scroll</b> to zoom &middot; <b>shift+click</b> to add matter.</p>
   </div>
 </div>
 
